@@ -4,6 +4,8 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from tkinterdnd2 import DND_FILES, TkinterDnD
+
 from image_generator import generate_image
 from scraper import fetch_shutuba
 
@@ -28,7 +30,13 @@ class ParticipantRow(tk.Frame):
         )
 
         self.avatar_label = tk.Label(
-            self, text="アバター: 未選択", width=20, anchor="w"
+            self,
+            text="アバター: 未選択 (D&D可)",
+            width=25,
+            anchor="w",
+            relief="groove",
+            padx=4,
+            pady=2,
         )
         self.avatar_label.pack(side=tk.LEFT, padx=(0, 5))
 
@@ -46,11 +54,40 @@ class ParticipantRow(tk.Frame):
     def get_name(self) -> str:
         return self.name_var.get().strip()
 
+    def enable_drop(self) -> None:
+        """ドロップターゲットとして登録する (TkinterDnD初期化後に呼ぶ)."""
+        self.avatar_label.drop_target_register(DND_FILES)
+        self.avatar_label.dnd_bind("<<Drop>>", self._on_drop)
+        self.avatar_label.dnd_bind("<<DragEnter>>", self._on_drag_enter)
+        self.avatar_label.dnd_bind("<<DragLeave>>", self._on_drag_leave)
+
+    def _on_drop(self, event: tk.Event) -> None:  # type: ignore[type-arg]
+        path: str = event.data  # type: ignore[attr-defined]
+        # tkdnd wraps paths with spaces in braces: {/path/to file.png}
+        path = path.strip().strip("{}")
+        if not path:
+            return
+        ext = os.path.splitext(path)[1].lower()
+        if ext not in (".png", ".jpg", ".jpeg", ".gif", ".bmp"):
+            return
+        self.avatar_path = path
+        self.avatar_label.config(
+            text=f"アバター: {os.path.basename(path)}",
+            bg="#e8f5e9",
+        )
+
+    def _on_drag_enter(self, event: tk.Event) -> None:  # type: ignore[type-arg]
+        self.avatar_label.config(bg="#bbdefb")
+
+    def _on_drag_leave(self, event: tk.Event) -> None:  # type: ignore[type-arg]
+        bg = "#e8f5e9" if self.avatar_path else self.avatar_label.master.cget("bg")
+        self.avatar_label.config(bg=bg)
+
     def get_avatar(self) -> str:
         return self.avatar_path
 
 
-class App(tk.Tk):
+class App(TkinterDnD.Tk):  # type: ignore[misc]
     """メインアプリケーション."""
 
     def __init__(self) -> None:
@@ -96,6 +133,14 @@ class App(tk.Tk):
         self.participant_rows: list[ParticipantRow] = []
         self._update_participant_rows()
 
+        # ドラッグ＆ドロップのヒント
+        dnd_hint = tk.Label(
+            participant_frame,
+            text="※ アバター画像はラベルへのドラッグ＆ドロップでも設定できます",
+            fg="gray",
+        )
+        dnd_hint.pack(anchor="w")
+
         # --- 出力設定 ---
         output_frame = tk.LabelFrame(self, text="出力設定", padx=10, pady=5)
         output_frame.pack(fill=tk.X, padx=10, pady=5)
@@ -138,6 +183,7 @@ class App(tk.Tk):
         for i in range(count):
             row = ParticipantRow(self.rows_frame, i)
             row.pack(fill=tk.X, pady=2)
+            row.enable_drop()
             self.participant_rows.append(row)
 
     def _select_output(self) -> None:
