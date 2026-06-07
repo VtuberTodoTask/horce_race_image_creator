@@ -1,5 +1,6 @@
 """出馬表の画像を生成するモジュール."""
 
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -26,17 +27,39 @@ LEGEND_MARKS = [
     ("☆", "注目馬"),
 ]
 
-# フォントパス候補
-FONT_CANDIDATES = [
+# フォントパス候補 (OS別)
+_FONT_CANDIDATES_LINUX = [
     "/usr/share/fonts/opentype/ipafont-gothic/ipagp.ttf",
     "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
     "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
     "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
 ]
 
+_FONT_CANDIDATES_WINDOWS = [
+    "C:\\Windows\\Fonts\\meiryo.ttc",
+    "C:\\Windows\\Fonts\\msgothic.ttc",
+    "C:\\Windows\\Fonts\\YuGothM.ttc",
+    "C:\\Windows\\Fonts\\YuGothR.ttc",
+    "C:\\Windows\\Fonts\\YuGothB.ttc",
+]
+
+_FONT_CANDIDATES_MACOS = [
+    "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    "/Library/Fonts/Arial Unicode.ttf",
+]
+
+
+def _get_font_candidates() -> list[str]:
+    if sys.platform == "win32":
+        return _FONT_CANDIDATES_WINDOWS + _FONT_CANDIDATES_LINUX
+    if sys.platform == "darwin":
+        return _FONT_CANDIDATES_MACOS + _FONT_CANDIDATES_LINUX
+    return _FONT_CANDIDATES_LINUX
+
 
 def _find_font(size: int) -> ImageFont.FreeTypeFont:
-    for path in FONT_CANDIDATES:
+    for path in _get_font_candidates():
         if Path(path).exists():
             return ImageFont.truetype(path, size)
     return ImageFont.load_default()
