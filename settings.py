@@ -23,6 +23,8 @@ class BackgroundSetting:
     size_mode: str = "auto"  # "auto" | "background" | "custom"
     custom_width: int = 1280
     custom_height: int = 720
+    bg_color: str = "#FFFFFF"
+    transparent: bool = False
 
 
 @dataclass
@@ -47,6 +49,8 @@ class AppSettings:
                 "size_mode": self.background.size_mode,
                 "custom_width": self.background.custom_width,
                 "custom_height": self.background.custom_height,
+                "bg_color": self.background.bg_color,
+                "transparent": self.background.transparent,
             },
         }
 
@@ -65,6 +69,8 @@ class AppSettings:
             size_mode=bg_data.get("size_mode", "auto"),
             custom_width=bg_data.get("custom_width", 1280),
             custom_height=bg_data.get("custom_height", 720),
+            bg_color=bg_data.get("bg_color", "#FFFFFF"),
+            transparent=bg_data.get("transparent", False),
         )
         return cls(
             participant_count=data.get("participant_count", 4),

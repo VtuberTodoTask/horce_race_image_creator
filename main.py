@@ -2,7 +2,7 @@
 
 import os
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import colorchooser, filedialog, messagebox, ttk
 
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
@@ -210,6 +210,38 @@ class App(TkinterDnD.Tk):  # type: ignore[misc]
             self.custom_size_frame, textvariable=self.custom_h_var, width=6
         )
         self.custom_h_entry.pack(side=tk.LEFT)
+
+        # 背景色 / 透過設定
+        color_frame = tk.Frame(bg_frame)
+        color_frame.pack(fill=tk.X, pady=(5, 0))
+
+        self.transparent_var = tk.BooleanVar(value=False)
+        self.transparent_cb = tk.Checkbutton(
+            color_frame,
+            text="透過",
+            variable=self.transparent_var,
+            command=self._on_transparent_change,
+        )
+        self.transparent_cb.pack(side=tk.LEFT)
+
+        tk.Label(color_frame, text="背景色:").pack(side=tk.LEFT, padx=(10, 0))
+        self.bg_color_var = tk.StringVar(value="#FFFFFF")
+        self.bg_color_entry = tk.Entry(
+            color_frame, textvariable=self.bg_color_var, width=8
+        )
+        self.bg_color_entry.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.color_preview = tk.Label(
+            color_frame, text="  ", bg="#FFFFFF", relief="solid", width=3
+        )
+        self.color_preview.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.color_pick_btn = tk.Button(
+            color_frame, text="色選択", command=self._pick_color
+        )
+        self.color_pick_btn.pack(side=tk.LEFT)
+
+        self.bg_color_var.trace_add("write", self._on_color_var_change)
         self._on_size_mode_change()
 
         # --- 出力設定 ---
@@ -273,11 +305,43 @@ class App(TkinterDnD.Tk):  # type: ignore[misc]
     def _clear_bg_image(self) -> None:
         self.bg_path_var.set("")
 
+    def _pick_color(self) -> None:
+        color = colorchooser.askcolor(
+            initialcolor=self.bg_color_var.get(), title="背景色を選択"
+        )
+        if color[1]:
+            self.bg_color_var.set(color[1])
+
+    def _on_color_var_change(self, *_args: str) -> None:
+        color = self.bg_color_var.get().strip()
+        if len(color) == 7 and color.startswith("#"):
+            try:
+                int(color[1:], 16)
+                self.color_preview.config(bg=color)
+            except ValueError:
+                pass
+
+    def _on_transparent_change(self) -> None:
+        is_transparent = self.transparent_var.get()
+        state = tk.DISABLED if is_transparent else tk.NORMAL
+        self.bg_color_entry.config(state=state)
+        self.color_pick_btn.config(state=state)
+
     def _on_size_mode_change(self) -> None:
         mode = self.size_mode_var.get()
-        state = tk.NORMAL if mode == "custom" else tk.DISABLED
-        self.custom_w_entry.config(state=state)
-        self.custom_h_entry.config(state=state)
+        is_bg_mode = mode == "background"
+        custom_state = tk.NORMAL if mode == "custom" else tk.DISABLED
+        self.custom_w_entry.config(state=custom_state)
+        self.custom_h_entry.config(state=custom_state)
+
+        # 背景色/透過は auto/custom 時のみ有効
+        color_state = tk.DISABLED if is_bg_mode else tk.NORMAL
+        self.transparent_cb.config(state=color_state)
+        if is_bg_mode:
+            self.bg_color_entry.config(state=tk.DISABLED)
+            self.color_pick_btn.config(state=tk.DISABLED)
+        else:
+            self._on_transparent_change()
 
     # ------------------------------------------------------------------
     # 参加者行の更新
@@ -320,6 +384,8 @@ class App(TkinterDnD.Tk):  # type: ignore[misc]
                 size_mode=self.size_mode_var.get(),
                 custom_width=cw,
                 custom_height=ch,
+                bg_color=self.bg_color_var.get(),
+                transparent=self.transparent_var.get(),
             ),
         )
 
@@ -338,7 +404,10 @@ class App(TkinterDnD.Tk):  # type: ignore[misc]
         self.size_mode_var.set(settings.background.size_mode)
         self.custom_w_var.set(str(settings.background.custom_width))
         self.custom_h_var.set(str(settings.background.custom_height))
+        self.bg_color_var.set(settings.background.bg_color)
+        self.transparent_var.set(settings.background.transparent)
         self._on_size_mode_change()
+        self._on_transparent_change()
 
     def _save_settings(self) -> None:
         settings = self._collect_settings()
@@ -425,6 +494,8 @@ class App(TkinterDnD.Tk):  # type: ignore[misc]
                 size_mode=self.size_mode_var.get(),
                 custom_width=cw,
                 custom_height=ch,
+                bg_color=self.bg_color_var.get(),
+                transparent=self.transparent_var.get(),
             )
 
             # 生成時に設定も自動保存

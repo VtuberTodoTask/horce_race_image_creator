@@ -72,6 +72,19 @@ def _text_size(
     return bbox[2] - bbox[0], bbox[3] - bbox[1]
 
 
+def _parse_bg_color(color: str, transparent: bool) -> tuple[int, int, int, int]:
+    """Parse hex color to RGBA tuple."""
+    if transparent:
+        return (0, 0, 0, 0)
+    color = color.strip().lstrip("#")
+    if len(color) == 6:
+        r = int(color[0:2], 16)
+        g = int(color[2:4], 16)
+        b = int(color[4:6], 16)
+        return (r, g, b, 255)
+    return (255, 255, 255, 255)
+
+
 def generate_image(
     entries: list[HorseEntry],
     participant_names: list[str] | None = None,
@@ -81,6 +94,8 @@ def generate_image(
     size_mode: str = "auto",
     custom_width: int = 1280,
     custom_height: int = 720,
+    bg_color: str = "#FFFFFF",
+    transparent: bool = False,
 ) -> str:
     """出馬表の画像を生成する.
 
@@ -93,6 +108,8 @@ def generate_image(
         size_mode: サイズモード ("auto" | "background" | "custom")
         custom_width: カスタム幅 (size_mode="custom"時)
         custom_height: カスタム高さ (size_mode="custom"時)
+        bg_color: 背景色 (hex, 例: "#FFFFFF")
+        transparent: 透過背景にするか
 
     Returns:
         出力画像パス
@@ -171,7 +188,8 @@ def generate_image(
     if bg_img is not None:
         img = bg_img.resize((canvas_width, canvas_height), Image.LANCZOS)
     else:
-        img = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 255))
+        fill_color = _parse_bg_color(bg_color, transparent)
+        img = Image.new("RGBA", (canvas_width, canvas_height), fill_color)
     draw = ImageDraw.Draw(img)
 
     # --- アバター行 ---
@@ -372,6 +390,8 @@ def generate_image(
         legend_y += th2 + 20
 
     # 保存
-    img = img.convert("RGB")
-    img.save(output_path, "PNG")
+    if transparent:
+        img.save(output_path, "PNG")
+    else:
+        img.convert("RGB").save(output_path, "PNG")
     return output_path
