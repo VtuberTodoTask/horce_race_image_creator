@@ -77,6 +77,10 @@ def generate_image(
     participant_names: list[str] | None = None,
     avatar_paths: list[str] | None = None,
     output_path: str = "output.png",
+    background_path: str = "",
+    size_mode: str = "auto",
+    custom_width: int = 1280,
+    custom_height: int = 720,
 ) -> str:
     """出馬表の画像を生成する.
 
@@ -85,6 +89,10 @@ def generate_image(
         participant_names: 参加者名リスト
         avatar_paths: 参加者アバター画像パスリスト
         output_path: 出力画像パス
+        background_path: 背景画像パス
+        size_mode: サイズモード ("auto" | "background" | "custom")
+        custom_width: カスタム幅 (size_mode="custom"時)
+        custom_height: カスタム高さ (size_mode="custom"時)
 
     Returns:
         出力画像パス
@@ -145,8 +153,25 @@ def generate_image(
 
     left_margin = 20
 
+    # 背景画像・サイズ決定
+    bg_img: Image.Image | None = None
+    if background_path and Path(background_path).exists():
+        bg_img = Image.open(background_path).convert("RGBA")
+
+    if size_mode == "background" and bg_img is not None:
+        canvas_width, canvas_height = bg_img.size
+    elif size_mode == "custom":
+        canvas_width = custom_width
+        canvas_height = custom_height
+    else:
+        canvas_width = total_width
+        canvas_height = total_height
+
     # 画像作成
-    img = Image.new("RGBA", (total_width, total_height), (255, 255, 255, 255))
+    if bg_img is not None:
+        img = bg_img.resize((canvas_width, canvas_height), Image.LANCZOS)
+    else:
+        img = Image.new("RGBA", (canvas_width, canvas_height), (255, 255, 255, 255))
     draw = ImageDraw.Draw(img)
 
     # --- アバター行 ---
