@@ -37,9 +37,23 @@ python main.py
 4. 「画像を生成」ボタンをクリック
 5. 指定した場所にPNG画像が出力されます
 
+## exeファイルの作成
+
+Python環境がなくても実行できるexeファイルを作成できます。
+
+```bash
+pip install -r requirements.txt
+python build_exe.py
+```
+
+ビルド完了後、`dist/HorceRaceImageCreator/` フォルダ内に実行ファイルが生成されます。
+このフォルダごと配布すればPython環境なしで利用できます。
+
 ## ファイル構成
 
 - `main.py` - GUIアプリケーション（tkinter）
 - `scraper.py` - netkeibaスクレイピングモジュール
 - `image_generator.py` - 画像生成モジュール（Pillow）
+- `settings.py` - 設定の保存/読込モジュール
+- `build_exe.py` - exe作成スクリプト（PyInstaller）
 - `requirements.txt` - Python依存パッケージ
