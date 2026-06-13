@@ -127,62 +127,96 @@ def generate_image(
     while len(avatar_paths) < num_participants:
         avatar_paths.append("")
 
-    # フォント設定
-    font_header = _find_font(22)
-    font_cell = _find_font(20)
-    font_legend = _find_font(20)
-    font_legend_mark = _find_font(28)
-
-    # レイアウト定数
-    row_height = 40
-    header_height = 55
-    avatar_height = 60
-    padding = 8
-
-    # 列幅定義
-    col_waku = 45
-    col_umaban = 45
-    col_name = 210
-    col_sex = 45
-    col_weight = 50
-    col_jockey = 100
-    participant_col_width = 80
-
-    data_cols_width = (
-        col_waku + col_umaban + col_name + col_sex + col_weight + col_jockey
-    )
-    participant_cols_width = (
-        participant_col_width * num_participants if num_participants > 0 else 0
-    )
-    legend_width = 120
-
-    table_width = data_cols_width + participant_cols_width
-    total_width = table_width + legend_width + 40  # 右余白
-
     num_rows = len(entries)
-    table_top = 20
-    avatar_row_top = table_top
-    header_top = avatar_row_top + (avatar_height if num_participants > 0 else 0)
-    data_top = header_top + header_height
 
-    table_height = data_top + num_rows * row_height - table_top
-    total_height = table_top + table_height + 20
-
-    left_margin = 20
-
-    # 背景画像・サイズ決定
+    # 背景画像読み込み
     bg_img: Image.Image | None = None
     if background_path and Path(background_path).exists():
         bg_img = Image.open(background_path).convert("RGBA")
 
+    # キャンバスサイズ決定（auto以外）
     if size_mode == "background" and bg_img is not None:
         canvas_width, canvas_height = bg_img.size
     elif size_mode == "custom":
         canvas_width = custom_width
         canvas_height = custom_height
     else:
-        canvas_width = total_width
-        canvas_height = total_height
+        canvas_width = 0
+        canvas_height = 0
+
+    # ベースレイアウト定数
+    base_row_height = 40
+    base_header_height = 55
+    base_avatar_height = 60
+    base_padding = 8
+    base_col_waku = 45
+    base_col_umaban = 45
+    base_col_name = 210
+    base_col_sex = 45
+    base_col_weight = 50
+    base_col_jockey = 100
+    base_participant_col_width = 80
+    base_legend_width = 120
+    base_legend_gap = 20
+
+    # フォントサイズ自動縮小: キャンバスに収まるようスケール調整
+    font_scale = 1.0
+    while font_scale >= 0.5:
+        row_height = max(20, int(base_row_height * font_scale))
+        header_height = max(30, int(base_header_height * font_scale))
+        avatar_height = max(30, int(base_avatar_height * font_scale))
+        col_waku = max(25, int(base_col_waku * font_scale))
+        col_umaban = max(25, int(base_col_umaban * font_scale))
+        col_name = max(100, int(base_col_name * font_scale))
+        col_sex = max(25, int(base_col_sex * font_scale))
+        col_weight = max(30, int(base_col_weight * font_scale))
+        col_jockey = max(60, int(base_col_jockey * font_scale))
+        participant_col_width = max(40, int(base_participant_col_width * font_scale))
+        legend_width = max(60, int(base_legend_width * font_scale))
+        legend_gap = max(10, int(base_legend_gap * font_scale))
+
+        data_cols_width = (
+            col_waku + col_umaban + col_name + col_sex + col_weight + col_jockey
+        )
+        participant_cols_width = (
+            participant_col_width * num_participants if num_participants > 0 else 0
+        )
+        table_width = data_cols_width + participant_cols_width
+
+        avatar_row_h = avatar_height if num_participants > 0 else 0
+        content_width = table_width + legend_gap + legend_width
+        content_height = avatar_row_h + header_height + num_rows * row_height
+
+        if size_mode == "auto":
+            break
+
+        # 縦横ともに収まるか確認
+        if content_height <= canvas_height and content_width <= canvas_width:
+            break
+
+        font_scale -= 0.05
+
+    # autoモード: キャンバスサイズをコンテンツに合わせる
+    if size_mode == "auto":
+        canvas_width = content_width + 40
+        canvas_height = content_height + 40
+
+    # フォント設定（スケール適用後）
+    font_header = _find_font(max(10, int(22 * font_scale)))
+    font_cell = _find_font(max(8, int(20 * font_scale)))
+    font_legend = _find_font(max(8, int(20 * font_scale)))
+    font_legend_mark = _find_font(max(12, int(28 * font_scale)))
+    padding = max(4, int(base_padding * font_scale))
+
+    # テーブルをキャンバス中央に配置
+    x_offset = max(0, (canvas_width - content_width) // 2)
+    y_offset = max(0, (canvas_height - content_height) // 2)
+
+    left_margin = x_offset
+    table_top = y_offset
+    avatar_row_top = table_top
+    header_top = avatar_row_top + (avatar_height if num_participants > 0 else 0)
+    data_top = header_top + header_height
 
     # 画像作成
     if bg_img is not None:
@@ -367,8 +401,8 @@ def generate_image(
         )
 
     # --- 凡例描画 ---
-    legend_x = hx + table_width + 20
-    legend_y = header_top + 40
+    legend_x = hx + table_width + legend_gap
+    legend_y = header_top + max(20, int(40 * font_scale))
 
     for mark, label in LEGEND_MARKS:
         tw, th = _text_size(draw, mark, font_legend_mark)
